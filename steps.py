@@ -66,3 +66,13 @@ y = add(square(a), square(a))
 y.backward()
 print(y.data)
 print(x.grad)
+
+from memory_profiler import profile
+
+@profile
+def big_func():
+    for i in range(10):
+        x = Variable(np.random.randn(10000))
+        y = square(square(square(x)))
+
+big_func()

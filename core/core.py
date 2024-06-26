@@ -1,5 +1,6 @@
 import numpy as np
 import heapq, itertools
+import weakref
 
 class Variable:
     def __init__(self, data):
@@ -44,7 +45,7 @@ class Variable:
         add_func(self.creator)
         while funcs:
             f = pop_func()
-            grad_ys = [output.grad for output in f.outputs]
+            grad_ys = [output().grad for output in f.outputs]
             grad_xs = f.backward(*grad_ys)
             if not isinstance(grad_xs, tuple):
                 grad_xs = (grad_xs,)
@@ -80,7 +81,7 @@ class Function:
             output.set_creator(self)
         
         self.inputs = inputs
-        self.outputs = outputs
+        self.outputs = [weakref.ref(output) for output in outputs]
         return outputs if len(outputs) > 1 else outputs[0]
 
     def forward(self, x):
