@@ -1,4 +1,5 @@
 import numpy as np
+import heapq, itertools
 
 class Variable:
     def __init__(self, data):
@@ -9,18 +10,40 @@ class Variable:
         self.data = data
         self.grad = None
         self.creator = None
+        self.generation = 0
     
     def set_creator(self, func):
         self.creator = func
+        self.generation = func.generation + 1
         
     def backward(self):
         if self.grad is None:
             self.grad = np.ones_like(self.data)
         
         # print(id(self), id(self.creator.outputs[0])) # same id for first output
-        funcs = [self.creator]
+        
+        funcs = []
+        seen_funcs = set()
+        entry_count = itertools.count()
+        
+        def add_func(f):
+            # avoid inserting duplicate functions
+            if f not in seen_funcs:
+                # generation is used to sort functions in topological order
+                # if f.generation is same, heapq will sort them based on the order of insertion
+                # sorting graph topologically every time is costly, so we use heapq
+                priority = -f.generation
+                ecount = next(entry_count)
+                heapq.heappush(funcs, (priority, ecount, f))
+                seen_funcs.add(f)
+        
+        def pop_func():
+            _, _, f = heapq.heappop(funcs) # fetch function with max generation
+            return f
+        
+        add_func(self.creator)
         while funcs:
-            f = funcs.pop()
+            f = pop_func()
             grad_ys = [output.grad for output in f.outputs]
             grad_xs = f.backward(*grad_ys)
             if not isinstance(grad_xs, tuple):
@@ -38,7 +61,10 @@ class Variable:
                     # x.grad += grad_x 
                 
                 if x.creator is not None:
-                    funcs.append(x.creator)
+                    add_func(x.creator)
+    
+    def clear_grad(self):
+        self.grad = None
         
 class Function:
     def __call__(self, *inputs):
@@ -49,6 +75,7 @@ class Function:
         
         outputs = [Variable(as_array(y)) for y in y_data]
         
+        self.generation = max([x.generation for x in inputs])
         for output in outputs:
             output.set_creator(self)
         
