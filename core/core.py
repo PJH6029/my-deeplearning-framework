@@ -17,23 +17,44 @@ class Variable:
         if self.grad is None:
             self.grad = np.ones_like(self.data)
         
+        # print(id(self), id(self.creator.outputs[0])) # same id for first output
         funcs = [self.creator]
         while funcs:
             f = funcs.pop()
-            x, y = f.input, f.output
-            x.grad = f.backward(y.grad)
-            if x.creator is not None:
-                funcs.append(x.creator)
+            grad_ys = [output.grad for output in f.outputs]
+            grad_xs = f.backward(*grad_ys)
+            if not isinstance(grad_xs, tuple):
+                grad_xs = (grad_xs,)
+            
+            for x, grad_x in zip(f.inputs, grad_xs):
+                if x.grad is None:
+                    x.grad = grad_x
+                else:
+                    x.grad = x.grad + grad_x # Add gradient from different paths
+                    
+                    # if they are same reference, in-place operation will make unexpected result
+                    # if grad_x refers to the same object as self.grad, self.grad will also refer x.grad
+                    # see deep-learning-from-scratch-3 appendix A (page 525)
+                    # x.grad += grad_x 
+                
+                if x.creator is not None:
+                    funcs.append(x.creator)
         
 class Function:
-    def __call__(self, input):
-        x = input.data
-        y = self.forward(x)
-        output = Variable(as_array(y))
-        output.set_creator(self)
-        self.input = input
-        self.output = output
-        return output
+    def __call__(self, *inputs):
+        x_data = [x.data for x in inputs]
+        y_data = self.forward(*x_data)
+        if not isinstance(y_data, tuple):
+            y_data = (y_data,)
+        
+        outputs = [Variable(as_array(y)) for y in y_data]
+        
+        for output in outputs:
+            output.set_creator(self)
+        
+        self.inputs = inputs
+        self.outputs = outputs
+        return outputs if len(outputs) > 1 else outputs[0]
 
     def forward(self, x):
         raise NotImplementedError()
