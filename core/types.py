@@ -8,8 +8,11 @@ try:
 except ImportError:
     pass
 
+
 # VariableOutput = Union[core.Variable, ]
 
 NDArray = Union[npt.NDArray]
 
 # InputType = Union[NDArray, Variable] TODO
+
+VariableInput = Union[NDArray, ]

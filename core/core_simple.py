@@ -1,4 +1,4 @@
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, Type
 import numpy as np
 from numpy.typing import NDArray, DTypeLike
 import heapq, itertools
@@ -20,6 +20,21 @@ def using_config(name: str, value: Any):
 def no_grad():
     return using_config('enable_backprop', False)
 
+
+# def add_operators(cls: Type["Variable"]) -> Type["Variable"]:
+#     cls.__add__ = add
+#     cls.__radd__ = add
+#     cls.__mul__ = mul
+#     cls.__rmul__ = mul
+#     cls.__neg__ = neg
+#     cls.__sub__ = sub
+#     cls.__rsub__ = rsub
+#     cls.__truediv__ = div
+#     cls.__rtruediv__ = rdiv
+#     cls.__pow__ = pow
+#     return cls
+
+# @add_operators
 class Variable:
     __array_priority__ = 200
     
@@ -117,6 +132,36 @@ class Variable:
     def clear_grad(self):
         self.grad = None
 
+    # Note: manually overriding operators, to make the result can be type-checked
+    def __add__(self, other: Any) -> "Variable":
+        return add(self, other)
+
+    def __radd__(self, other: Any) -> "Variable":
+        return add(self, other)
+    
+    def __mul__(self, other: Any) -> "Variable":
+        return mul(self, other)
+    
+    def __rmul__(self, other: Any) -> "Variable":    
+        return mul(self, other)
+    
+    def __neg__(self) -> "Variable":
+        return neg(self)
+    
+    def __sub__(self, other: Any) -> "Variable":
+        return sub(self, other)
+    
+    def __rsub__(self, other: Any) -> "Variable":
+        return rsub(self, other)
+    
+    def __truediv__(self, other: Any) -> "Variable":
+        return div(self, other)
+    
+    def __rtruediv__(self, other: Any) -> "Variable":
+        return rdiv(self, other)
+    
+    def __pow__(self, other: Any) -> "Variable":
+        return pow(self, other)
         
 def as_array(x: Any) -> NDArray:
     if np.isscalar(x):
@@ -247,15 +292,3 @@ class Pow(Function):
 
 def pow(x: Variable, c: float) -> Variable:
     return Pow(c)(x)
-
-def setup_variable():
-    Variable.__add__ = add
-    Variable.__radd__ = add
-    Variable.__mul__ = mul
-    Variable.__rmul__ = mul
-    Variable.__neg__ = neg
-    Variable.__sub__ = sub
-    Variable.__rsub__ = rsub
-    Variable.__truediv__ = div
-    Variable.__rtruediv__ = rdiv
-    Variable.__pow__ = pow
