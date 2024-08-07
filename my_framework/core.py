@@ -3,7 +3,8 @@ import numpy as np
 import heapq, itertools
 import weakref
 import contextlib
-from core.types import *
+from my_framework.types import *
+import my_framework
 
 # =============================================================================
 # Configuration and Context Managers
@@ -72,13 +73,21 @@ class Function:
 # =============================================================================
 class Add(Function):
     def forward(self, x0: NDArray, x1: NDArray) -> NDArray:
+        # self.x0_shape, self.x1_shape = x0.shape, x1.shape
         return x0 + x1
 
     def backward(self, gy) -> tuple["Variable", "Variable"]:
-        return gy, gy
+        x0, x1 = self.inputs
+        gx0, gx1 = gy, gy
+        if x0.shape != x1.shape: # TODO 책과 다름
+            # broadcasted in forward
+            # sum along broadcasted axes
+            gx0 = my_framework.functions.sum_to(gx0, x0.shape)
+            gx1 = my_framework.functions.sum_to(gx1, x1.shape)
+        return gx0, gx1
 
 def add(x0: "Variable", x1: Any) -> "Variable":
-    x1 = as_array(x1)
+    x1 = as_array(x1) # TODO x1이 이미 variable이면 의미상 어색, 구현상으론 문제 x
     return Add()(x0, x1)
 
 class Mul(Function):
@@ -87,6 +96,11 @@ class Mul(Function):
 
     def backward(self, gy: "Variable") -> tuple["Variable", "Variable"]:
         x0, x1 = self.inputs
+        gx0 = gy * x1
+        gx1 = gy * x0
+        if x0.shape != x1.shape:
+            gx0 = my_framework.functions.sum_to(gx0, x0.shape)
+            gx1 = my_framework.functions.sum_to(gx1, x1.shape)
         return gy * x1, gy * x0
 
 def mul(x0: "Variable", x1: Any) -> "Variable":
@@ -110,7 +124,14 @@ class Sub(Function):
         return x0 - x1
 
     def backward(self, gy: "Variable") -> tuple["Variable", "Variable"]:
-        return gy, -gy
+        x0, x1 = self.inputs
+        gx0 = gy
+        gx1 = -gy
+        if x0.shape != x1.shape:
+            gx0 = my_framework.functions.sum_to(gx0, x0.shape)
+            gx1 = my_framework.functions.sum_to(gx1, x1.shape)
+        return gx0, gx1
+        
     
 def sub(x0: "Variable", x1: Any) -> "Variable":
     x1 = as_array(x1)
@@ -128,6 +149,9 @@ class Div(Function):
         x0, x1 = self.inputs
         gx0 = gy / x1
         gx1 = gy * (-x0 / x1 ** 2)
+        if x0.shape != x1.shape:
+            gx0 = my_framework.functions.sum_to(gx0, x0.shape)
+            gx1 = my_framework.functions.sum_to(gx1, x1.shape)
         return gx0, gx1
     
 def div(x0: "Variable", x1: Any) -> "Variable":
@@ -257,6 +281,22 @@ class Variable:
     
     def clear_grad(self):
         self.grad = None
+        
+    def reshape(self, *shape: int) -> "Variable":
+        if len(shape) == 1 and isinstance(shape[0], (tuple, list)):
+            shape = shape[0]
+        return my_framework.functions.reshape(self, shape)
+    
+    def transpose(self, *axes: int) -> "Variable":
+        if len(axes) == 0:
+            axes = None
+        elif len(axes) == 1 and (isinstance(axes[0], (tuple, list)) or axes[0] is None):
+            axes = axes[0]
+        return my_framework.functions.transpose(self, axes)
+    
+    @property
+    def T(self):
+        return self.transpose()
     
     # Note: manually overriding operators, to make the result can be type-checked
     def __add__(self, other: Any) -> "Variable":
@@ -289,3 +329,5 @@ class Variable:
     def __pow__(self, other: Any) -> "Variable":
         return pow(self, other)
 
+    def __matmul__(self, other: "Variable") -> "Variable":
+        return my_framework.functions.matmul(self, other)

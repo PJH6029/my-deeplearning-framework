@@ -6,8 +6,8 @@ if "__file__" in globals():
 
 import numpy as np
 from matplotlib import pyplot as plt
-from core import Variable
-from core import functions as F
+from my_framework import Variable
+from my_framework import functions as F
 
 x = Variable(np.linspace(-7, 7, 200))
 y = F.sin(x)

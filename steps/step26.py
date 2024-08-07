@@ -5,7 +5,7 @@ if "__file__" in globals():
 
 
 import numpy as np
-from core import Variable, utils
+from my_framework import Variable, utils
 
 def goldstein(x, y):
     z = (1 + (x + y + 1) ** 2 * (19 - 14 * x + 3 * x ** 2 - 14 * y + 6 * x * y + 3 * y ** 2)) * \

@@ -1,5 +1,5 @@
 import unittest
-from core.core_simple import Variable
+from my_framework.core_simple import Variable
 from steps.steps import square
 import numpy as np
 

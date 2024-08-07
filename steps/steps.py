@@ -1,4 +1,4 @@
-from core.core_simple import *
+from my_framework.core_simple import *
 
 class Exp(Function):
     def forward(self, x):

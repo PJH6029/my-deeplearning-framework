@@ -4,7 +4,7 @@ if "__file__" in globals():
     sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
 import numpy as np
-from core import Variable, Function
+from my_framework import Variable, Function
 
 print(Variable.__add__)
 x = Variable(np.array(1.0))

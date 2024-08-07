@@ -1,6 +1,6 @@
 from typing import Any, Optional, Union
 from numpy import typing as npt
-import core
+import my_framework
 
 try:
     # from cupy.t TODO
@@ -15,4 +15,4 @@ NDArray = Union[npt.NDArray]
 
 # InputType = Union[NDArray, Variable] TODO
 
-VariableInput = Union[NDArray, ]
+# FunctionParam = Union[NDArray, my_framework.core.Variable]

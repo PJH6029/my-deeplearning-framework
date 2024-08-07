@@ -8,8 +8,8 @@ except ImportError:
 
 from typing import Any, Union
 
-from core.core_simple import Variable
-from core.types import *
+from my_framework.core_simple import Variable
+from my_framework.types import *
 
 def get_array_module(x: Union[Variable, NDArray]) -> Any:
     if isinstance(x, Variable):

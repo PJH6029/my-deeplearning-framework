@@ -4,7 +4,7 @@ if "__file__" in globals():
     sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
 import numpy as np
-from core import Variable
+from my_framework import Variable
 
 def sphere(x, y) -> Variable:
     z = x ** 2 + y ** 2

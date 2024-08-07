@@ -4,7 +4,7 @@ if "__file__" in globals():
     sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
 import numpy as np
-from core import Variable, Function
+from my_framework import Variable, Function
 
 def rosenbrock(x0: Variable, x1: Variable) -> Variable:
     y = 100 * (x1 - x0 ** 2) ** 2 + (1 - x0) ** 2

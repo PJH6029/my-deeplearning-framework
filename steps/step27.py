@@ -5,9 +5,9 @@ if "__file__" in globals():
 
 import math
 import numpy as np
-from core import Function, Variable
-from core.types import *
-from core import utils
+from my_framework import Function, Variable
+from my_framework.types import *
+from my_framework import utils
 
 class Sin(Function):
     def forward(self, x: NDArray) -> NDArray:
