@@ -36,16 +36,16 @@ def my_sin(x: Variable, threshold=1e-4) -> Variable:
             break
     return y
 
-x.clear_grad()
-y.clear_grad()
+x.cleargrad()
+y.cleargrad()
 y = my_sin(x)
 y.backward()
 print(y.data)
 print(x.grad)
 utils.plot_dot_graph(y, verbose=False, to_file="my_sin.png")
 
-x.clear_grad()
-y.clear_grad()
+x.cleargrad()
+y.cleargrad()
 y = my_sin(x, threshold=1e-150)
 y.backward()
 utils.plot_dot_graph(y, verbose=False, to_file="my_sin_1e_150.png")

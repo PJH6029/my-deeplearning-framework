@@ -21,8 +21,8 @@ for i in range(num_iters):
     
     y = rosenbrock(x0, x1)
     
-    x0.clear_grad()
-    x1.clear_grad()
+    x0.cleargrad()
+    x1.cleargrad()
     y.backward()
     
     x0.data -= lr * x0.grad

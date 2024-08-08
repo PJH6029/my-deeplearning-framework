@@ -2,28 +2,10 @@ from typing import Any, Optional, Union, Type
 import numpy as np
 import heapq, itertools
 import weakref
-import contextlib
-from my_framework.types import *
+
+from my_framework.types import NDArray
+from my_framework.core.config import Config, using_config
 import my_framework
-
-# =============================================================================
-# Configuration and Context Managers
-# =============================================================================
-
-class Config:
-    enable_backprop = True
-
-@contextlib.contextmanager
-def using_config(name: str, value: Any):
-    old_value = getattr(Config, name)
-    setattr(Config, name, value)
-    try:
-        yield
-    finally:
-        setattr(Config, name, old_value)
-
-def no_grad():
-    return using_config('enable_backprop', False)
 
 # =============================================================================
 # Utility functions
@@ -69,132 +51,17 @@ class Function:
         raise NotImplementedError()
 
 # =============================================================================
-# Overriding operators
-# =============================================================================
-class Add(Function):
-    def forward(self, x0: NDArray, x1: NDArray) -> NDArray:
-        return x0 + x1
-
-    def backward(self, gy: "Variable") -> tuple["Variable", "Variable"]:
-        x0, x1 = self.inputs
-        gx0, gx1 = gy, gy
-        if x0.shape != x1.shape:
-            # broadcasted in forward
-            # sum along broadcasted axes
-            gx0 = my_framework.functions.sum_to(gx0, x0.shape)
-            gx1 = my_framework.functions.sum_to(gx1, x1.shape)
-        return gx0, gx1
-
-def add(x0: "Variable", x1: Any) -> "Variable":
-    if isinstance(x1, Variable):
-        return Add()(x0, x1)
-    return Add()(x0, as_array(x1))
-
-class Mul(Function):
-    def forward(self, x0: NDArray, x1: NDArray) -> NDArray:
-        return x0 * x1
-
-    def backward(self, gy: "Variable") -> tuple["Variable", "Variable"]:
-        x0, x1 = self.inputs
-        gx0 = gy * x1
-        gx1 = gy * x0
-        if x0.shape != x1.shape:
-            gx0 = my_framework.functions.sum_to(gx0, x0.shape)
-            gx1 = my_framework.functions.sum_to(gx1, x1.shape)
-        return gy * x1, gy * x0
-
-def mul(x0: "Variable", x1: Any) -> "Variable":
-    if isinstance(x1, Variable):
-        return Mul()(x0, x1)
-    return Mul()(x0, as_array(x1))
-
-
-class Neg(Function):
-    def forward(self, x: NDArray) -> NDArray:
-        return -x
-
-    def backward(self, gy: "Variable") -> "Variable":
-        return -gy
-    
-def neg(x: "Variable") -> "Variable":
-    return Neg()(x)
-
-
-class Sub(Function):
-    def forward(self, x0: NDArray, x1: NDArray) -> NDArray:
-        return x0 - x1
-
-    def backward(self, gy: "Variable") -> tuple["Variable", "Variable"]:
-        x0, x1 = self.inputs
-        gx0 = gy
-        gx1 = -gy
-        if x0.shape != x1.shape:
-            gx0 = my_framework.functions.sum_to(gx0, x0.shape)
-            gx1 = my_framework.functions.sum_to(gx1, x1.shape)
-        return gx0, gx1
-        
-    
-def sub(x0: "Variable", x1: Any) -> "Variable":
-    if isinstance(x1, Variable):
-        return Sub()(x0, x1)
-    return Sub()(x0, as_array(x1))
-
-def rsub(x0: "Variable", x1: Any) -> "Variable":
-    if isinstance(x1, Variable):
-        return Sub()(x1, x0)
-    return Sub()(as_array(x1), x0)
-
-class Div(Function):
-    def forward(self, x0: NDArray, x1: NDArray) -> NDArray:
-        return x0 / x1
-    
-    def backward(self, gy: "Variable") -> tuple["Variable", "Variable"]:
-        x0, x1 = self.inputs
-        gx0 = gy / x1
-        gx1 = gy * (-x0 / x1 ** 2)
-        if x0.shape != x1.shape:
-            gx0 = my_framework.functions.sum_to(gx0, x0.shape)
-            gx1 = my_framework.functions.sum_to(gx1, x1.shape)
-        return gx0, gx1
-    
-def div(x0: "Variable", x1: Any) -> "Variable":
-    if isinstance(x1, Variable):
-        return Div()(x0, x1)
-    return Div()(x0, as_array(x1))
-
-def rdiv(x0: "Variable", x1: Any) -> "Variable":
-    if isinstance(x1, Variable):
-        return Div()(x1, x0)
-    return Div()(as_array(x1), x0)
-
-
-class Pow(Function):
-    def __init__(self, c: float):
-        self.c = c
-        
-    def forward(self, x: NDArray) -> NDArray:
-        return x ** self.c
-    
-    def backward(self, gy: "Variable") -> "Variable":
-        x, = self.inputs
-        c = self.c
-        return gy * c * x ** (c - 1)
-    
-def pow(x: "Variable", c: float) -> "Variable":
-    return Pow(c)(x)
-
-# =============================================================================
-# Variable class
+# Base Variable class
 # =============================================================================
 class Variable:
     __array_priority__ = 200
     
     def __init__(self, data: Any, name: Optional[str] = None):
         if data is not None:
-            if not isinstance(data, NDArray):
+            if not isinstance(data, np.ndarray):
                 raise TypeError(f'{type(data)} is not supported')
         
-        self.data: NDArray = data
+        self.data: Optional[NDArray] = data
         self.name: Optional[str] = name
         self.grad: Optional["Variable"] = None
         self.creator: Function = None
@@ -284,7 +151,7 @@ class Variable:
                 for y in f.outputs:
                     y().grad = None # y: weakref.ref
     
-    def clear_grad(self):
+    def cleargrad(self):
         self.grad = None
         
     def reshape(self, *shape: int) -> "Variable":
@@ -336,3 +203,122 @@ class Variable:
 
     def __matmul__(self, other: "Variable") -> "Variable":
         return my_framework.functions.matmul(self, other)
+
+
+class Parameter(Variable):
+    pass
+
+# =============================================================================
+# Overriding operators
+# =============================================================================
+class Add(Function):
+    def forward(self, x0: NDArray, x1: NDArray) -> NDArray:
+        return x0 + x1
+
+    def backward(self, gy: Variable) -> tuple[Variable, Variable]:
+        x0, x1 = self.inputs
+        gx0, gx1 = gy, gy
+        if x0.shape != x1.shape:
+            # broadcasted in forward
+            # sum along broadcasted axes
+            gx0 = my_framework.functions.sum_to(gx0, x0.shape)
+            gx1 = my_framework.functions.sum_to(gx1, x1.shape)
+        return gx0, gx1
+
+def add(x0: Variable, x1: Any) -> Variable:
+    if isinstance(x1, Variable):
+        return Add()(x0, x1)
+    return Add()(x0, as_array(x1))
+
+class Mul(Function):
+    def forward(self, x0: NDArray, x1: NDArray) -> NDArray:
+        return x0 * x1
+
+    def backward(self, gy: Variable) -> tuple[Variable, Variable]:
+        x0, x1 = self.inputs
+        gx0 = gy * x1
+        gx1 = gy * x0
+        if x0.shape != x1.shape:
+            gx0 = my_framework.functions.sum_to(gx0, x0.shape)
+            gx1 = my_framework.functions.sum_to(gx1, x1.shape)
+        return gy * x1, gy * x0
+
+def mul(x0: Variable, x1: Any) -> Variable:
+    if isinstance(x1, Variable):
+        return Mul()(x0, x1)
+    return Mul()(x0, as_array(x1))
+
+
+class Neg(Function):
+    def forward(self, x: NDArray) -> NDArray:
+        return -x
+
+    def backward(self, gy: Variable) ->Variable:
+        return -gy
+    
+def neg(x: Variable) -> Variable:
+    return Neg()(x)
+
+
+class Sub(Function):
+    def forward(self, x0: NDArray, x1: NDArray) -> NDArray:
+        return x0 - x1
+
+    def backward(self, gy: Variable) -> tuple[Variable, Variable]:
+        x0, x1 = self.inputs
+        gx0 = gy
+        gx1 = -gy
+        if x0.shape != x1.shape:
+            gx0 = my_framework.functions.sum_to(gx0, x0.shape)
+            gx1 = my_framework.functions.sum_to(gx1, x1.shape)
+        return gx0, gx1
+        
+    
+def sub(x0: Variable, x1: Any) -> Variable:
+    if isinstance(x1, Variable):
+        return Sub()(x0, x1)
+    return Sub()(x0, as_array(x1))
+
+def rsub(x0: Variable, x1: Any) -> Variable:
+    if isinstance(x1, Variable):
+        return Sub()(x1, x0)
+    return Sub()(as_array(x1), x0)
+
+class Div(Function):
+    def forward(self, x0: NDArray, x1: NDArray) -> NDArray:
+        return x0 / x1
+    
+    def backward(self, gy: Variable) -> tuple[Variable, Variable]:
+        x0, x1 = self.inputs
+        gx0 = gy / x1
+        gx1 = gy * (-x0 / x1 ** 2)
+        if x0.shape != x1.shape:
+            gx0 = my_framework.functions.sum_to(gx0, x0.shape)
+            gx1 = my_framework.functions.sum_to(gx1, x1.shape)
+        return gx0, gx1
+    
+def div(x0: Variable, x1: Any) -> Variable:
+    if isinstance(x1, Variable):
+        return Div()(x0, x1)
+    return Div()(x0, as_array(x1))
+
+def rdiv(x0: Variable, x1: Any) -> Variable:
+    if isinstance(x1, Variable):
+        return Div()(x1, x0)
+    return Div()(as_array(x1), x0)
+
+
+class Pow(Function):
+    def __init__(self, c: float):
+        self.c = c
+        
+    def forward(self, x: NDArray) -> NDArray:
+        return x ** self.c
+    
+    def backward(self, gy: Variable) -> Variable:
+        x, = self.inputs
+        c = self.c
+        return gy * c * x ** (c - 1)
+    
+def pow(x: Variable, c: float) -> Variable:
+    return Pow(c)(x)

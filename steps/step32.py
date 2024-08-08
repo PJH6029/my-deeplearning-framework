@@ -33,11 +33,11 @@ for i in range(iters):
     print(i, x)
     
     y = f(x)
-    x.clear_grad()
+    x.cleargrad()
     y.backward(create_graph=True)
     gx = x.grad
     
-    x.clear_grad()
+    x.cleargrad()
     gx.backward()
     gx2 = x.grad
     

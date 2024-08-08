@@ -18,7 +18,7 @@ logs = [y.data]
 for i in range(3):
     logs.append(x.grad.data)
     gx = x.grad
-    x.clear_grad()
+    x.cleargrad()
     gx.backward(create_graph=True)
 
 labels = ["y=sin(x)", "y'", "y''", "y'''"]

@@ -1,6 +1,5 @@
 from typing import Any, Optional, Union
 from numpy import typing as npt
-import my_framework
 
 try:
     # from cupy.t TODO
