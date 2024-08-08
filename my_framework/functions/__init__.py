@@ -1,4 +1,7 @@
-from my_framework.functions.loss import mean_squared_error
+from my_framework.functions.loss import (
+    mean_squared_error,
+    softmax_cross_entropy,
+)
 from my_framework.functions.basic import (
     sin, cos, tanh, exp, log,
     get_item,

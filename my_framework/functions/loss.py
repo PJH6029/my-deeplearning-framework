@@ -4,6 +4,7 @@ import numpy as np
 import my_framework.core.base as base
 from my_framework.types import NDArray
 import my_framework.functions as F
+from my_framework import utils
 
 def mean_squared_error_naive(x0, x1):
     diff = x0 - x1
@@ -41,11 +42,15 @@ def softmax_cross_entropy_naive(x: Union[base.Variable, NDArray], t: Union[base.
 class SoftmaxCrossEntropy(base.Function):
     def forward(self, x: NDArray, t: NDArray) -> NDArray:
         N = x.shape[0]
-        log_p = F.log_softmax(x)
-        tlog_p = log_p[np.arange(N), t.ravel()]
-        y = -1 * F.sum(tlog_p) / np.float32(N)
+        # log_p = F.log_softmax(x)
+        
+        # Cannot use my_framework.functions, since it returns Variable, not NDArray
+        log_z = utils.logsumexp(x, axis=1) 
+        log_p = x - log_z
+        log_p = log_p[np.arange(N), t]
+        y = -log_p.sum() / np.float32(N)
         return y
-
+    
     def backward(self, gy: base.Variable) -> base.Variable:
         x, t = self.inputs
         N, CLS_NUM = x.shape
