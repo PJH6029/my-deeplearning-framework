@@ -10,7 +10,7 @@ class Layer:
         self._params: set[str] = set()
     
     def __setattr__(self, name: str, value: Any) -> None:
-        if isinstance(value, Parameter):
+        if isinstance(value, (Parameter, Layer)):
             self._params.add(name)
         super().__setattr__(name, value)
     
@@ -28,9 +28,14 @@ class Layer:
     
     def params(self) -> Generator[Parameter, None, None]:
         for name in self._params:
-            yield self.__dict__[name]
+            obj = self.__dict__[name]
+            
+            if isinstance(obj, Layer):
+                yield from obj.params()
+            else:
+                yield obj
         
-    def cleargrad(self):
+    def cleargrads(self):
         for param in self.params():
             param.cleargrad()
 

@@ -29,8 +29,8 @@ for i in range(iters):
     y_pred = predict(x)
     loss = F.mean_squared_error(y, y_pred)
 
-    l1.cleargrad()
-    l2.cleargrad()
+    l1.cleargrads()
+    l2.cleargrads()
     loss.backward()
 
     for l in [l1, l2]:
