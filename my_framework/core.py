@@ -33,7 +33,7 @@ def as_array(x: Any) -> NDArray:
         return np.array(x)
     return x
 
-def as_variable(obj: Any) -> "Variable":
+def as_variable(obj: Union["Variable", NDArray]) -> "Variable":
     if isinstance(obj, Variable):
         return obj
     return Variable(obj)
@@ -73,13 +73,12 @@ class Function:
 # =============================================================================
 class Add(Function):
     def forward(self, x0: NDArray, x1: NDArray) -> NDArray:
-        # self.x0_shape, self.x1_shape = x0.shape, x1.shape
         return x0 + x1
 
-    def backward(self, gy) -> tuple["Variable", "Variable"]:
+    def backward(self, gy: "Variable") -> tuple["Variable", "Variable"]:
         x0, x1 = self.inputs
         gx0, gx1 = gy, gy
-        if x0.shape != x1.shape: # TODO 책과 다름
+        if x0.shape != x1.shape:
             # broadcasted in forward
             # sum along broadcasted axes
             gx0 = my_framework.functions.sum_to(gx0, x0.shape)
@@ -87,8 +86,9 @@ class Add(Function):
         return gx0, gx1
 
 def add(x0: "Variable", x1: Any) -> "Variable":
-    x1 = as_array(x1) # TODO x1이 이미 variable이면 의미상 어색, 구현상으론 문제 x
-    return Add()(x0, x1)
+    if isinstance(x1, Variable):
+        return Add()(x0, x1)
+    return Add()(x0, as_array(x1))
 
 class Mul(Function):
     def forward(self, x0: NDArray, x1: NDArray) -> NDArray:
@@ -104,8 +104,9 @@ class Mul(Function):
         return gy * x1, gy * x0
 
 def mul(x0: "Variable", x1: Any) -> "Variable":
-    x1 = as_array(x1)
-    return Mul()(x0, x1)
+    if isinstance(x1, Variable):
+        return Mul()(x0, x1)
+    return Mul()(x0, as_array(x1))
 
 
 class Neg(Function):
@@ -134,12 +135,14 @@ class Sub(Function):
         
     
 def sub(x0: "Variable", x1: Any) -> "Variable":
-    x1 = as_array(x1)
-    return Sub()(x0, x1)
+    if isinstance(x1, Variable):
+        return Sub()(x0, x1)
+    return Sub()(x0, as_array(x1))
 
 def rsub(x0: "Variable", x1: Any) -> "Variable":
-    x1 = as_array(x1)
-    return Sub()(x1, x0)
+    if isinstance(x1, Variable):
+        return Sub()(x1, x0)
+    return Sub()(as_array(x1), x0)
 
 class Div(Function):
     def forward(self, x0: NDArray, x1: NDArray) -> NDArray:
@@ -155,12 +158,14 @@ class Div(Function):
         return gx0, gx1
     
 def div(x0: "Variable", x1: Any) -> "Variable":
-    x1 = as_array(x1)
-    return Div()(x0, x1)
+    if isinstance(x1, Variable):
+        return Div()(x0, x1)
+    return Div()(x0, as_array(x1))
 
 def rdiv(x0: "Variable", x1: Any) -> "Variable":
-    x1 = as_array(x1)
-    return Div()(x1, x0)
+    if isinstance(x1, Variable):
+        return Div()(x1, x0)
+    return Div()(as_array(x1), x0)
 
 
 class Pow(Function):
@@ -186,7 +191,7 @@ class Variable:
     
     def __init__(self, data: Any, name: Optional[str] = None):
         if data is not None:
-            if not isinstance(data, np.ndarray):
+            if not isinstance(data, NDArray):
                 raise TypeError(f'{type(data)} is not supported')
         
         self.data: NDArray = data
