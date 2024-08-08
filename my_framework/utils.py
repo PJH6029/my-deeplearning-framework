@@ -1,6 +1,7 @@
-import os, subprocess, tempfile
-from typing import Any, Union
+import os, subprocess, tempfile, urllib.request
+from typing import Any, Union, Optional
 from numpy.typing import NDArray
+import numpy as np
 
 import my_framework.core.base as base
 
@@ -109,3 +110,68 @@ def sum_to(x: NDArray, shape: tuple[int, ...]) -> NDArray:
     if lead > 0:
         y = y.squeeze(lead_axis)
     return y
+
+def logsumexp(x: NDArray, axis: int = 1) -> NDArray:
+    xmax = x.max(axis=axis, keepdims=True)
+    
+    y = x - xmax
+    np.exp(y, out=y)
+    
+    s = y.sum(axis=axis, keepdims=True)
+    np.log(s, out=s)
+    
+    xmax += s
+    return xmax
+
+# =============================================================================
+# download utility
+# =============================================================================
+def show_progress(block_num: int, block_size: int, total_size: int) -> None:
+    downloaded = block_num * block_size
+    p = downloaded / total_size * 100
+    i = int(downloaded / total_size * 30)
+    if p >= 100:
+        p = 100
+        
+    if i >= 30:
+        i = 30
+        
+    print(f"\r[{'#' * i}{' ' * (30 - i)}] {p:.1f}%", end="")
+
+
+cache_dir = os.path.join(os.path.expanduser("~"), ".my_framework")
+
+def get_file(url: str, file_name: Optional[str] = None) -> str:
+    if file_name is None:
+        file_name = url[url.rfind("/") + 1:]
+    file_path = os.path.join(cache_dir, file_name)
+    
+    if not os.path.exists(cache_dir):
+        os.mkdir(cache_dir)
+    
+    if os.path.exists(file_path):
+        return file_path
+    
+    print("Downloading:", file_name)
+    try:
+        urllib.request.urlretrieve(url, file_path, reporthook=show_progress)
+    except (Exception, KeyboardInterrupt) as e:
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        raise
+    print("Done")
+    
+    return file_path
+
+
+# =============================================================================
+# others
+# =============================================================================
+def pairify(x: Any) -> tuple[Any, Any]:
+    if isinstance(x, int):
+        return x, x
+    elif isinstance(x, tuple):
+        assert len(x) == 2
+        return x
+    else:
+        raise ValueError

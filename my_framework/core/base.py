@@ -170,6 +170,9 @@ class Variable:
     def T(self):
         return self.transpose()
     
+    def sum(self, axis: Optional[Union[int, tuple[int, ...]]] = None, keepdims: bool = False) -> "Variable":
+        return my_framework.functions.sum(self, axis, keepdims)
+    
     # Note: manually overriding operators, to make the result can be type-checked
     def __add__(self, other: Any) -> "Variable":
         return add(self, other)
@@ -203,6 +206,11 @@ class Variable:
 
     def __matmul__(self, other: "Variable") -> "Variable":
         return my_framework.functions.matmul(self, other)
+    
+    def __getitem__(self, key: (
+        slice | int | tuple[slice | int] | tuple[slice | int, ...]    
+    )) -> "Variable":
+        return my_framework.functions.get_item(self, key)
 
 
 class Parameter(Variable):
