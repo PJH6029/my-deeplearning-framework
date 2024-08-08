@@ -23,6 +23,9 @@ class Compose(Transform):
             img = t(img)
         return img
 
+class Identity(Transform):
+    def __call__(self, img: Union[Image.Image, NDArray]) -> Union[Image.Image, NDArray]:
+        return img
 
 class Convert(Transform):
     def __init__(self, mode: str):
