@@ -143,6 +143,16 @@ class Linear(base.Function):
 def linear(x: Union[base.Variable, NDArray], W: Union[base.Variable, NDArray], b: Optional[Union[base.Variable, NDArray]] = None) -> base.Variable:
     return Linear()(x, W, b)
 
+def dropout(x: Union[base.Variable, NDArray], dropout_ratio: float = 0.5) -> base.Variable:
+    x = base.as_variable(x)
+    if base.Config.train:
+        xp = cuda.get_array_module(x)
+        mask = xp.random.rand(*x.shape) > dropout_ratio
+        scale = xp.array(1.0 / (1.0 - dropout_ratio), dtype=x.dtype)
+        return x * mask * scale
+    else:
+        return x
+
 def expand_dims(x: Union[base.Variable, NDArray], axis: int) -> base.Variable:
     x = base.as_variable(x)
     shape = list(x.shape)

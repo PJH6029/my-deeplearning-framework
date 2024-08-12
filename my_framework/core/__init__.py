@@ -2,10 +2,10 @@ from my_framework.core.base import (
     Function, Variable, Parameter, as_variable, as_array
 )
 from my_framework.core.config import (
-    Config, using_config, no_grad
+    Config, using_config, no_grad, test_mode
 )
 
 __all__ = [
     "Function", "Variable", "as_variable",
-    "Config", "using_config", "no_grad",
+    "Config", "using_config", "no_grad", "test_mode",
 ]

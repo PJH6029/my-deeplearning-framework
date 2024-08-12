@@ -4,6 +4,7 @@ from my_framework.core import (
     Parameter,
     using_config,
     no_grad,
+    test_mode,
     as_array,
     as_variable,
 )
