@@ -30,7 +30,7 @@ def as_numpy(x: Union[Variable, XPNDArray]) -> NDArray:
     
     if np.isscalar(x):
         return np.array(x)
-    elif isinstance(x, NDArray):
+    elif isinstance(x, np.ndarray):
         return x
     return cp.asnumpy(x)
 

@@ -1,4 +1,4 @@
-import weakref
+import weakref, os
 from typing import Any, Generator, Optional
 import numpy as np
 
@@ -38,7 +38,38 @@ class Layer:
     def cleargrads(self):
         for param in self.params():
             param.cleargrad()
+            
+    def _flatten_params(self, params_dict: dict[str, Variable], parent_key: str = "", sep: str = "/") -> None:
+        for name in self._params:
+            obj = self.__dict__[name]
+            key = parent_key + sep + name if parent_key else name
+            
+            if isinstance(obj, Layer):
+                obj._flatten_params(params_dict, key, sep)
+            else:
+                params_dict[key] = obj
+    
+    def save_params(self, path: str) -> None:
+        self.to_cpu()
         
+        params_dict = {}
+        self._flatten_params(params_dict)
+        array_dict = {key: param.data for key, param in params_dict.items() if param is not None and param.data is not None}
+        
+        try:
+            np.savez_compressed(path, **array_dict)
+        except (Exception, KeyboardInterrupt) as e:
+            if os.path.exists(path):
+                os.remove(path)
+            raise
+    
+    def load_params(self, path: str) -> None:
+        npz = np.load(path)
+        params_dict = {}
+        self._flatten_params(params_dict)
+        for key, param in params_dict.items():
+            param.data = npz[key]
+    
     def to_cpu(self):
         for param in self.params():
             param.to_cpu()

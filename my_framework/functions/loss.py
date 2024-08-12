@@ -5,6 +5,7 @@ import my_framework.core.base as base
 from my_framework.types import NDArray
 import my_framework.functions as F
 from my_framework import utils
+import my_framework.cuda as cuda
 
 def mean_squared_error_naive(x0, x1):
     diff = x0 - x1
@@ -59,7 +60,7 @@ class SoftmaxCrossEntropy(base.Function):
         y = F.softmax(x)
         
         # convert to one-hot
-        xp = utils.get_array_module(x)
+        xp = cuda.get_array_module(x)
         t_one_hot = xp.eye(CLS_NUM, dtype=t.dtype)[t.data]
         gx = (y - t_one_hot) * gy
         return gx
