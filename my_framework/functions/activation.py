@@ -5,6 +5,7 @@ import my_framework.core.base as base
 from my_framework.types import NDArray
 from my_framework import utils
 import my_framework.functions as F
+from my_framework import cuda
 
 def sigmoid_simple(x: Union[base.Variable, NDArray]) -> NDArray:
     x_var = base.as_variable(x)
@@ -13,8 +14,8 @@ def sigmoid_simple(x: Union[base.Variable, NDArray]) -> NDArray:
 
 class Sigmoid(base.Function):
     def forward(self, x: NDArray) -> NDArray:
-        # y = 1 / (1 + np.exp(-x))
-        y = np.tanh(x * 0.5) * 0.5 + 0.5 # Better implementation
+        xp = cuda.get_array_module(x)
+        y = xp.tanh(x * 0.5) * 0.5 + 0.5 # Better implementation
         return y
     
     def backward(self, gy: base.Variable) -> base.Variable:
@@ -28,7 +29,8 @@ def sigmoid(x: Union[base.Variable, NDArray]) -> base.Variable:
 
 class ReLU(base.Function):
     def forward(self, x: NDArray) -> NDArray:
-        return np.maximum(x, 0.0)
+        xp = cuda.get_array_module(x)
+        return xp.maximum(x, 0.0)
 
     def backward(self, gy: base.Variable) -> base.Variable:
         x, = self.inputs
@@ -52,7 +54,8 @@ class Softmax(base.Function):
         self.axis = axis
         
     def forward(self, x: NDArray) -> NDArray:
-        y = np.exp(x - x.max(axis=self.axis, keepdims=True))
+        xp = cuda.get_array_module(x)
+        y = xp.exp(x - x.max(axis=self.axis, keepdims=True))
         y /= y.sum(axis=self.axis, keepdims=True)
         return y
     

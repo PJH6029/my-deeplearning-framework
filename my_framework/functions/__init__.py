@@ -6,6 +6,7 @@ from my_framework.functions.basic import (
     sin, cos, tanh, exp, log,
     get_item,
     min, max, clip,
+    accuracy,
 )
 from my_framework.functions.tensor import (
     reshape, transpose, sum, sum_to, broadcast_to,

@@ -1,17 +1,19 @@
 from typing import Union
 import numpy as np
 
-from my_framework.core import Variable, Function
+from my_framework.core import Variable, Function, as_variable, as_array
 from my_framework.types import NDArray
 from my_framework import utils
 import my_framework.functions as F
+import my_framework.cuda as cuda
 
 # =============================================================================
 # trigonometric
 # =============================================================================
 class Sin(Function):
     def forward(self, x: NDArray) -> NDArray:
-        y = np.sin(x)
+        xp = cuda.get_array_module(x)
+        y = xp.sin(x)
         return y
     
     def backward(self, gy: Variable) -> Variable:
@@ -25,7 +27,8 @@ def sin(x: Union[Variable, NDArray]) -> Variable:
 
 class Cos(Function):
     def forward(self, x: NDArray) -> NDArray:
-        y = np.cos(x)
+        xp = cuda.get_array_module(x)
+        y = xp.cos(x)
         return y
     
     def backward(self, gy: Variable) -> Variable:
@@ -39,7 +42,8 @@ def cos(x: Union[Variable, NDArray]) -> Variable:
 
 class Tanh(Function):
     def forward(self, x: NDArray) -> NDArray:
-        y = np.tanh(x)
+        xp = cuda.get_array_module(x)
+        y = xp.tanh(x)
         return y
     
     def backward(self, gy: Variable) -> Variable:
@@ -53,7 +57,8 @@ def tanh(x: Union[Variable, NDArray]) -> Variable:
 
 class Exp(Function):
     def forward(self, x: NDArray) -> NDArray:
-        y = np.exp(x)
+        xp = cuda.get_array_module(x)
+        y = xp.exp(x)
         return y
     
     def backward(self, gy: Variable) -> Variable:
@@ -66,7 +71,8 @@ def exp(x: Union[Variable, NDArray]) -> Variable:
 
 class Log(Function):
     def forward(self, x: NDArray) -> NDArray:
-        y = np.log(x)
+        xp = cuda.get_array_module(x)
+        y = xp.log(x)
         return y
     
     def backward(self, gy: Variable) -> Variable:
@@ -105,8 +111,13 @@ class GetItemGrad(Function):
         self.in_shape = in_shape
         
     def forward(self, gy: NDArray) -> NDArray:
-        gx = np.zeros(self.in_shape, dtype=gy.dtype)
-        np.add.at(gx, self.key, gy)
+        xp = cuda.get_array_module(gy)
+        gx = xp.zeros(self.in_shape, dtype=gy.dtype)
+        
+        if xp is np:
+            np.add.at(gx, self.key, gy)
+        else:
+            xp.scatter_add(gx, self.key, gy)
         return gx
     
     def backward(self, ggx: Variable) -> Variable:
@@ -155,7 +166,8 @@ class Clip(Function):
         self.x_max = x_max
     
     def forward(self, x: NDArray) -> NDArray:
-        return np.clip(x, self.x_min, self.x_max)
+        xp = cuda.get_array_module(x)
+        return xp.clip(x, self.x_min, self.x_max)
     
     def backward(self, gy: Variable) -> Variable:
         x, = self.inputs
@@ -164,3 +176,15 @@ class Clip(Function):
     
 def clip(x: Union[Variable, NDArray], x_min: Union[float, int], x_max: Union[float, int]) -> Variable:
     return Clip(x_min, x_max)(x)
+
+
+def accuracy(y: Union[Variable, NDArray], t: Union[Variable, NDArray]) -> Variable:
+    """
+    This function is not differentiable.
+    """
+    y, t = as_variable(y), as_variable(t)
+
+    pred = y.data.argmax(axis=1).reshape(t.shape)
+    result = (pred == t.data)
+    acc = result.mean()
+    return Variable(as_array(acc))

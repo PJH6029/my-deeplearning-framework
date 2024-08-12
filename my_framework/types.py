@@ -1,17 +1,12 @@
 from typing import Any, Optional, Union
 from numpy import typing as npt
-
-try:
-    # from cupy.t TODO
-    pass
-except ImportError:
-    pass
-
-
-# VariableOutput = Union[core.Variable, ]
+import numpy as np
 
 NDArray = Union[npt.NDArray]
 
-# InputType = Union[NDArray, Variable] TODO
+try:
+    import cupy as cp
+    NDArray = Union[npt.NDArray, cp.ndarray]
+except ImportError:
+    NDArray = Union[npt.NDArray]
 
-# FunctionParam = Union[NDArray, my_framework.core.Variable]

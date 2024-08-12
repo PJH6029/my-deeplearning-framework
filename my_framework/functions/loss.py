@@ -59,7 +59,8 @@ class SoftmaxCrossEntropy(base.Function):
         y = F.softmax(x)
         
         # convert to one-hot
-        t_one_hot = np.eye(CLS_NUM, dtype=t.dtype)[t.data]
+        xp = utils.get_array_module(x)
+        t_one_hot = xp.eye(CLS_NUM, dtype=t.dtype)[t.data]
         gx = (y - t_one_hot) * gy
         return gx
     

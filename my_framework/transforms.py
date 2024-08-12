@@ -1,4 +1,4 @@
-from typing import Union, Optional, Literal
+from typing import Union, Optional, Literal, Callable, Sequence
 import numpy as np
 from numpy.typing import DTypeLike
 try:
@@ -90,8 +90,8 @@ class ToPIL(Transform):
 class Normalize(Transform):
     def __init__(
         self, 
-        mean: Union[list[float | int], tuple[float | int], float | int] = 0,
-        std: Union[list[float | int], tuple[float | int], float | int] = 1,
+        mean: Union[Sequence[float | int], float | int] = 0,
+        std: Union[Sequence[float | int], float | int] = 1,
     ):
         self.mean = mean
         self.std = std
@@ -128,3 +128,11 @@ ToFloat = AsType
 class ToInt(AsType):
     def __init__(self, dtype: DTypeLike = np.int32):
         super().__init__(dtype)
+
+
+class TransformLambda(Transform):
+    def __init__(self, func: Callable[[Union[Image.Image, NDArray]], Union[Image.Image, NDArray]]):
+        self.func = func
+        
+    def __call__(self, img: Union[Image.Image, NDArray]) -> Union[Image.Image, NDArray]:
+        return self.func(img)

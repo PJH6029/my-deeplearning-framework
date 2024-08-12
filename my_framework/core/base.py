@@ -3,6 +3,12 @@ import numpy as np
 import heapq, itertools
 import weakref
 
+try:
+    import cupy
+    array_types = (np.ndarray, cupy.ndarray)
+except ImportError:
+    array_types = (np.ndarray,)
+
 from my_framework.types import NDArray
 from my_framework.core.config import Config, using_config
 import my_framework
@@ -10,9 +16,9 @@ import my_framework
 # =============================================================================
 # Utility functions
 # =============================================================================
-def as_array(x: Any) -> NDArray:
+def as_array(x: Any, array_module=np) -> NDArray:
     if np.isscalar(x):
-        return np.array(x)
+        return array_module.array(x)
     return x
 
 def as_variable(obj: Union["Variable", NDArray]) -> "Variable":
@@ -58,7 +64,7 @@ class Variable:
     
     def __init__(self, data: Any, name: Optional[str] = None):
         if data is not None:
-            if not isinstance(data, np.ndarray):
+            if not isinstance(data, array_types):
                 raise TypeError(f'{type(data)} is not supported')
         
         self.data: Optional[NDArray] = data
@@ -102,7 +108,8 @@ class Variable:
             return
         
         if self.grad is None:
-            self.grad = Variable(np.ones_like(self.data))
+            xp = my_framework.cuda.get_array_module(self.data)
+            self.grad = Variable(xp.ones_like(self.data))
 
         funcs: list[Function] = []
         seen_funcs: set[Function] = set()
@@ -173,6 +180,14 @@ class Variable:
     def sum(self, axis: Optional[Union[int, tuple[int, ...]]] = None, keepdims: bool = False) -> "Variable":
         return my_framework.functions.sum(self, axis, keepdims)
     
+    def to_cpu(self):
+        if self.data is not None:
+            self.data = my_framework.cuda.as_numpy(self.data)
+    
+    def to_gpu(self):
+        if self.data is not None:
+            self.data = my_framework.cuda.as_cupy(self.data)
+    
     # Note: manually overriding operators, to make the result can be type-checked
     def __add__(self, other: Any) -> "Variable":
         return add(self, other)
@@ -236,7 +251,7 @@ class Add(Function):
 def add(x0: Variable, x1: Any) -> Variable:
     if isinstance(x1, Variable):
         return Add()(x0, x1)
-    return Add()(x0, as_array(x1))
+    return Add()(x0, as_array(x1, my_framework.cuda.get_array_module(x0.data)))
 
 class Mul(Function):
     def forward(self, x0: NDArray, x1: NDArray) -> NDArray:
@@ -254,7 +269,7 @@ class Mul(Function):
 def mul(x0: Variable, x1: Any) -> Variable:
     if isinstance(x1, Variable):
         return Mul()(x0, x1)
-    return Mul()(x0, as_array(x1))
+    return Mul()(x0, as_array(x1, my_framework.cuda.get_array_module(x0.data)))
 
 
 class Neg(Function):
@@ -285,12 +300,12 @@ class Sub(Function):
 def sub(x0: Variable, x1: Any) -> Variable:
     if isinstance(x1, Variable):
         return Sub()(x0, x1)
-    return Sub()(x0, as_array(x1))
+    return Sub()(x0, as_array(x1, my_framework.cuda.get_array_module(x0.data)))
 
 def rsub(x0: Variable, x1: Any) -> Variable:
     if isinstance(x1, Variable):
         return Sub()(x1, x0)
-    return Sub()(as_array(x1), x0)
+    return Sub()(as_array(x1, my_framework.cuda.get_array_module(x0.data)), x0)
 
 class Div(Function):
     def forward(self, x0: NDArray, x1: NDArray) -> NDArray:
@@ -308,12 +323,12 @@ class Div(Function):
 def div(x0: Variable, x1: Any) -> Variable:
     if isinstance(x1, Variable):
         return Div()(x0, x1)
-    return Div()(x0, as_array(x1))
+    return Div()(x0, as_array(x1, my_framework.cuda.get_array_module(x0.data)))
 
 def rdiv(x0: Variable, x1: Any) -> Variable:
     if isinstance(x1, Variable):
         return Div()(x1, x0)
-    return Div()(as_array(x1), x0)
+    return Div()(as_array(x1, my_framework.cuda.get_array_module(x0.data)), x0)
 
 
 class Pow(Function):

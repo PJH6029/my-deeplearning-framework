@@ -4,6 +4,7 @@ import numpy as np
 import my_framework.core.base as base
 from my_framework.types import NDArray
 from my_framework import utils
+import my_framework.cuda as cuda
 
 class Reshape(base.Function):
     def __init__(self, shape: tuple[int, ...]) -> None:
@@ -27,7 +28,7 @@ class Transpose(base.Function):
         self.axes = axes
     
     def forward(self, x: NDArray) -> NDArray:
-        y = np.transpose(x, axes=self.axes)
+        y = x.transpose(self.axes)
         return y
     
     def backward(self, gy: base.Variable) -> base.Variable:
@@ -87,7 +88,8 @@ class BroadcastTo(base.Function):
     
     def forward(self, x: NDArray) -> NDArray:
         self.x_shape = x.shape
-        y = np.broadcast_to(x, self.shape)
+        xp = cuda.get_array_module(x)
+        y = xp.broadcast_to(x, self.shape)
         return y
     
     def backward(self, gy: base.Variable) -> base.Variable:
@@ -140,3 +142,12 @@ class Linear(base.Function):
 
 def linear(x: Union[base.Variable, NDArray], W: Union[base.Variable, NDArray], b: Optional[Union[base.Variable, NDArray]] = None) -> base.Variable:
     return Linear()(x, W, b)
+
+def expand_dims(x: Union[base.Variable, NDArray], axis: int) -> base.Variable:
+    x = base.as_variable(x)
+    shape = list(x.shape)
+    shape.insert(axis, 1)
+    return reshape(x, tuple(shape))
+
+def flatten(x: Union[base.Variable, NDArray]) -> base.Variable:
+    return reshape(x, (x.shape[0], -1))
